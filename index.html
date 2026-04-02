@@ -16,6 +16,8 @@
       --danger: #ff6b6b;
       --success: #57d38c;
       --warning: #f0b429;
+      --selected: #2a4f82;
+      --overlay: rgba(0, 0, 0, 0.75);
     }
 
     * {
@@ -39,7 +41,7 @@
     .app {
       height: calc(100vh - 20px);
       display: grid;
-      grid-template-rows: auto auto 1fr;
+      grid-template-rows: auto auto auto 1fr;
       gap: 10px;
     }
 
@@ -67,6 +69,7 @@
       background: #111827;
       color: var(--muted);
       font-size: 12px;
+      margin-bottom: 6px;
     }
 
     h1 {
@@ -92,6 +95,13 @@
       gap: 8px;
       align-items: center;
       margin-top: 8px;
+    }
+
+    .auto-controls {
+      display: grid;
+      grid-template-columns: auto auto auto auto auto minmax(180px, 1fr);
+      gap: 8px;
+      align-items: center;
     }
 
     select, input, button {
@@ -140,6 +150,11 @@
       border-color: rgba(255, 107, 107, 0.6) !important;
     }
 
+    .auto-running {
+      border-color: rgba(240, 180, 41, 0.7) !important;
+      box-shadow: 0 0 0 2px rgba(240, 180, 41, 0.16) inset;
+    }
+
     @keyframes pulse {
       0% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.35); }
       70% { box-shadow: 0 0 0 10px rgba(255, 107, 107, 0); }
@@ -149,7 +164,7 @@
     .workspace {
       min-height: 0;
       display: grid;
-      grid-template-columns: 1.05fr 1.4fr;
+      grid-template-columns: 1.2fr 1fr;
       gap: 10px;
     }
 
@@ -161,7 +176,7 @@
     }
 
     .left-pane {
-      grid-template-rows: auto auto 1fr;
+      grid-template-rows: auto 1fr;
     }
 
     .preview-card {
@@ -181,15 +196,11 @@
 
     .live-box {
       aspect-ratio: 16 / 9;
-      max-height: 28vh;
+      max-height: 40vh;
+      min-height: 320px;
     }
 
-    .last-box {
-      aspect-ratio: 16 / 9;
-      max-height: 16vh;
-    }
-
-    video, canvas, img {
+    video, img {
       width: 100%;
       height: 100%;
       display: block;
@@ -199,7 +210,7 @@
 
     .meta {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 8px;
     }
 
@@ -250,11 +261,13 @@
 
     .gallery {
       min-height: 0;
-      overflow: auto;
+      overflow-y: auto;
+      overflow-x: hidden;
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
       gap: 10px;
       padding-right: 2px;
+      align-content: start;
     }
 
     .gallery-empty {
@@ -272,32 +285,26 @@
       background: #11151d;
       overflow: hidden;
       display: grid;
-      grid-template-rows: auto 124px 1fr;
-      min-height: 0;
+      grid-template-rows: 150px auto;
+      cursor: pointer;
+      transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+      user-select: none;
     }
 
-    .item-toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      border-bottom: 1px solid var(--border);
-      background: #0f131b;
-      font-size: 12px;
+    .item-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
     }
 
-    .check-wrap {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--muted);
-      font-size: 12px;
+    .item-card.selected {
+      border-color: #6ea8ff;
+      box-shadow: 0 0 0 2px rgba(110, 168, 255, 0.2) inset;
+      background: var(--selected);
     }
 
     .item-preview {
       background: #000;
-      border-bottom: 1px solid var(--border);
+      position: relative;
     }
 
     .item-preview img,
@@ -306,20 +313,34 @@
       height: 100%;
       object-fit: cover;
       background: #000;
+      pointer-events: none;
+    }
+
+    .item-top-badges {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      right: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .pill {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(15, 17, 21, 0.85);
+      color: var(--text);
     }
 
     .item-body {
       padding: 10px;
       display: grid;
       gap: 6px;
-      align-content: start;
-    }
-
-    .item-kind {
-      font-size: 11px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: .08em;
     }
 
     .item-name {
@@ -329,11 +350,10 @@
       word-break: break-word;
     }
 
-    .item-meta {
+    .item-date {
       color: var(--muted);
       font-size: 12px;
-      line-height: 1.35;
-      white-space: pre-wrap;
+      line-height: 1.3;
     }
 
     .item-actions {
@@ -348,13 +368,69 @@
       color: var(--muted);
     }
 
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: var(--overlay);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 1000;
+    }
+
+    .modal.open {
+      display: flex;
+    }
+
+    .modal-content {
+      width: min(1200px, 96vw);
+      height: min(86vh, 900px);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: #0b0d12;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      box-shadow: 0 20px 80px rgba(0, 0, 0, 0.45);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      background: #11151d;
+    }
+
+    .modal-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .modal-body {
+      background: #000;
+      min-height: 0;
+    }
+
+    .modal-body img,
+    .modal-body video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+
     @media (max-width: 1200px) {
       .workspace {
-        grid-template-columns: 1fr 1.15fr;
+        grid-template-columns: 1.1fr 1fr;
       }
 
       .controls,
-      .naming {
+      .naming,
+      .auto-controls {
         grid-template-columns: repeat(4, minmax(0, 1fr));
       }
 
@@ -378,12 +454,12 @@
 
       .controls,
       .naming,
+      .auto-controls,
       .meta {
         grid-template-columns: repeat(2, 1fr);
       }
 
-      .live-box,
-      .last-box {
+      .live-box {
         max-height: none;
       }
     }
@@ -396,7 +472,7 @@
         <div class="badge">GoPro Capture Studio</div>
         <h1>PNG + MP4 galeri, cache, klasöre yazma</h1>
       </div>
-      <div class="muted">Chrome / Edge önerilir</div>
+      <div class="muted" id="buildInfo">Son güncelleme: 2026-04-02 10:44</div>
     </section>
 
     <section class="card" style="display:grid; gap:8px;">
@@ -423,6 +499,27 @@
       </div>
     </section>
 
+    <section class="card" style="display:grid; gap:8px;">
+      <div class="auto-controls">
+        <select id="autoDelaySelect">
+          <option value="5">5 sn sonra başla</option>
+          <option value="10">10 sn sonra başla</option>
+        </select>
+
+        <select id="autoIntervalSelect">
+          <option value="3">3 sn aralık</option>
+          <option value="5">5 sn aralık</option>
+        </select>
+
+        <input id="autoCountInput" type="text" value="6 foto" disabled />
+
+        <button id="autoStartBtn" class="warning" disabled>Oto Capture Başlat</button>
+        <button id="autoStopBtn" class="danger" disabled>Oto Capture Durdur</button>
+
+        <div class="hint" id="autoInfo">Oto capture kapalı</div>
+      </div>
+    </section>
+
     <section class="workspace">
       <section class="left-pane">
         <section class="card preview-card">
@@ -435,16 +532,6 @@
           </div>
         </section>
 
-        <section class="card preview-card">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-            <strong>Son capture</strong>
-            <span class="muted" id="galleryStats">0 öğe</span>
-          </div>
-          <div class="preview-box last-box">
-            <canvas id="canvas"></canvas>
-          </div>
-        </section>
-
         <section class="card" style="display:grid; gap:10px;">
           <div class="meta">
             <div class="meta-card"><div class="meta-label">Cihaz</div><div id="deviceInfo" class="meta-value">-</div></div>
@@ -452,10 +539,11 @@
             <div class="meta-card"><div class="meta-label">Kayıt formatı</div><div id="mimeInfo" class="meta-value">-</div></div>
             <div class="meta-card"><div class="meta-label">Kayıt süresi</div><div id="durationInfo" class="meta-value">00:00</div></div>
             <div class="meta-card"><div class="meta-label">Cache</div><div id="cacheInfo" class="meta-value">Hazır</div></div>
+            <div class="meta-card"><div class="meta-label">Oto capture</div><div id="autoStateInfo" class="meta-value">Kapalı</div></div>
           </div>
           <div id="status" class="status">Hazır.</div>
           <div class="hint">
-            Sayfayı HTTPS altında aç. En iyi sonuç için Chrome kullan.
+            Tek tık seçim yapar. Çift tık ön izleme penceresi açar. Oto capture 6 foto üretir.
           </div>
         </section>
       </section>
@@ -463,16 +551,27 @@
       <section class="card gallery-card">
         <div class="gallery-head">
           <strong>Galeri</strong>
-          <span class="muted">Kart içinde tarih var, dış sayfa scroll yok</span>
+          <span class="muted" id="galleryStats">0 öğe</span>
         </div>
         <div id="gallery" class="gallery"></div>
       </section>
     </section>
   </main>
 
+  <div id="previewModal" class="modal" aria-hidden="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="modalTitle">Ön izleme</div>
+        <button id="closeModalBtn" class="danger">Kapat</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
   <script>
+    const APP_UPDATED_AT = "2026-04-02 10:44";
+
     const videoEl = document.getElementById("video");
-    const canvasEl = document.getElementById("canvas");
     const deviceSelectEl = document.getElementById("videoDevice");
     const grantBtnEl = document.getElementById("grantBtn");
     const refreshBtnEl = document.getElementById("refreshBtn");
@@ -498,6 +597,19 @@
     const galleryStatsEl = document.getElementById("galleryStats");
     const folderInfoEl = document.getElementById("folderInfo");
     const liveInfoEl = document.getElementById("liveInfo");
+    const buildInfoEl = document.getElementById("buildInfo");
+    const previewModalEl = document.getElementById("previewModal");
+    const modalTitleEl = document.getElementById("modalTitle");
+    const modalBodyEl = document.getElementById("modalBody");
+    const closeModalBtnEl = document.getElementById("closeModalBtn");
+
+    const autoDelaySelectEl = document.getElementById("autoDelaySelect");
+    const autoIntervalSelectEl = document.getElementById("autoIntervalSelect");
+    const autoCountInputEl = document.getElementById("autoCountInput");
+    const autoStartBtnEl = document.getElementById("autoStartBtn");
+    const autoStopBtnEl = document.getElementById("autoStopBtn");
+    const autoInfoEl = document.getElementById("autoInfo");
+    const autoStateInfoEl = document.getElementById("autoStateInfo");
 
     let currentStream = null;
     let mediaRecorder = null;
@@ -510,6 +622,17 @@
     let isCacheReady = false;
     let folderHandle = null;
     let folderName = "";
+    let audioCtx = null;
+
+    let autoCaptureTimeoutId = null;
+    let autoCaptureIntervalId = null;
+    let autoCaptureRunning = false;
+    let autoCaptureStarted = false;
+    let autoCaptureRemaining = 0;
+    let autoCaptureTotal = 6;
+    let autoCaptureDelaySeconds = 5;
+    let autoCaptureIntervalSeconds = 3;
+    let autoCountdownIntervalId = null;
 
     const GALLERY_DB = "gopro-capture-studio-db";
     const GALLERY_STORE = "captures";
@@ -606,12 +729,97 @@
       }
     }
 
+    function ensureAudioContext() {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return null;
+      if (!audioCtx) {
+        audioCtx = new AudioCtx();
+      }
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume().catch(() => {});
+      }
+      return audioCtx;
+    }
+
+    function playSimpleBeep() {
+      const ctx = ensureAudioContext();
+      if (!ctx) return;
+
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, now);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.08, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.14);
+    }
+
+    function playShutterClick() {
+      const ctx = ensureAudioContext();
+      if (!ctx) return;
+
+      const now = ctx.currentTime;
+      const bufferSize = Math.floor(ctx.sampleRate * 0.08);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+
+      for (let i = 0; i < bufferSize; i += 1) {
+        const decay = 1 - i / bufferSize;
+        data[i] = (Math.random() * 2 - 1) * decay * 0.45;
+      }
+
+      const source = ctx.createBufferSource();
+      const filter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+
+      source.buffer = buffer;
+      filter.type = "highpass";
+      filter.frequency.setValueAtTime(1200, now);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.7, now + 0.002);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      source.start(now);
+      source.stop(now + 0.09);
+    }
+
     function supportsDirectoryWriting() {
       return typeof window.showDirectoryPicker === "function";
     }
 
     function updateFolderUi() {
       folderInfoEl.textContent = folderHandle ? `Klasör: ${folderName}` : "Klasör seçilmedi";
+    }
+
+    function updateAutoCaptureUi() {
+      const hasStream = Boolean(currentStream);
+      autoStartBtnEl.disabled = !hasStream || autoCaptureRunning || Boolean(mediaRecorder && mediaRecorder.state === "recording");
+      autoStopBtnEl.disabled = !autoCaptureRunning;
+      autoDelaySelectEl.disabled = autoCaptureRunning;
+      autoIntervalSelectEl.disabled = autoCaptureRunning;
+      autoStartBtnEl.classList.toggle("auto-running", autoCaptureRunning);
+      autoStateInfoEl.textContent = autoCaptureRunning
+        ? (autoCaptureStarted ? `Çalışıyor • ${autoCaptureRemaining}/${autoCaptureTotal}` : `Bekliyor • ${autoCaptureDelaySeconds} sn`)
+        : "Kapalı";
+    }
+
+    function updateGalleryStats() {
+      const selectedCount = galleryItems.filter(item => item.selected).length;
+      galleryStatsEl.textContent = `${galleryItems.length} öğe${selectedCount ? ` • ${selectedCount} seçili` : ""}`;
     }
 
     function updateUiState() {
@@ -621,12 +829,12 @@
       const hasItems = galleryItems.length > 0;
       const hasDevices = deviceSelectEl.options.length > 0 && deviceSelectEl.value;
 
-      deviceSelectEl.disabled = !permissionGranted || isRecording || !hasDevices;
-      captureBtnEl.disabled = !hasStream || isRecording || !isCacheReady;
-      recordBtnEl.disabled = !hasStream || isRecording || !selectedRecordingMimeType || !isCacheReady;
+      deviceSelectEl.disabled = !permissionGranted || isRecording || !hasDevices || autoCaptureRunning;
+      captureBtnEl.disabled = !hasStream || isRecording || !isCacheReady || autoCaptureRunning;
+      recordBtnEl.disabled = !hasStream || isRecording || !selectedRecordingMimeType || !isCacheReady || autoCaptureRunning;
       stopRecordBtnEl.disabled = !isRecording;
       stopStreamBtnEl.disabled = !hasStream;
-      refreshBtnEl.disabled = !permissionGranted;
+      refreshBtnEl.disabled = !permissionGranted || autoCaptureRunning;
       grantBtnEl.disabled = permissionGranted && hasStream;
       selectAllBtnEl.disabled = !hasItems;
       clearSelectionBtnEl.disabled = selectedCount === 0;
@@ -639,11 +847,7 @@
 
       updateFolderUi();
       updateGalleryStats();
-    }
-
-    function updateGalleryStats() {
-      const selectedCount = galleryItems.filter(item => item.selected).length;
-      galleryStatsEl.textContent = `${galleryItems.length} öğe${selectedCount ? ` • ${selectedCount} seçili` : ""}`;
+      updateAutoCaptureUi();
     }
 
     function setMetaInfo({ device = "-", resolution = "-", mime = "-" } = {}) {
@@ -662,28 +866,10 @@
 
     function revokeGalleryObjectUrls() {
       for (const item of galleryItems) {
-        if (item.objectUrl) URL.revokeObjectURL(item.objectUrl);
-      }
-    }
-
-    function drawBlobOnCanvas(blob) {
-      if (!blob.type.startsWith("image/")) return;
-      const url = URL.createObjectURL(blob);
-      const img = new Image();
-
-      img.onload = () => {
-        canvasEl.width = img.naturalWidth;
-        canvasEl.height = img.naturalHeight;
-        const ctx = canvasEl.getContext("2d");
-        if (ctx) {
-          ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-          ctx.drawImage(img, 0, 0);
+        if (item.objectUrl) {
+          URL.revokeObjectURL(item.objectUrl);
         }
-        URL.revokeObjectURL(url);
-      };
-
-      img.onerror = () => URL.revokeObjectURL(url);
-      img.src = url;
+      }
     }
 
     function pickSupportedMp4MimeType() {
@@ -695,7 +881,9 @@
       ];
 
       for (const type of mp4Types) {
-        if (MediaRecorder.isTypeSupported(type)) return type;
+        if (MediaRecorder.isTypeSupported(type)) {
+          return type;
+        }
       }
 
       return "";
@@ -721,9 +909,9 @@
       return new Promise((resolve, reject) => {
         const tr = dbx.transaction(storeName, mode);
         const store = tr.objectStore(storeName);
-        const request = runner(store);
+        runner(store);
 
-        tr.oncomplete = () => resolve(request);
+        tr.oncomplete = () => resolve();
         tr.onerror = () => reject(tr.error || new Error("DB işlem hatası."));
         tr.onabort = () => reject(tr.error || new Error("DB işlem iptal edildi."));
       });
@@ -736,19 +924,21 @@
     }
 
     async function saveItemToCache(item) {
-      await tx(db, GALLERY_STORE, "readwrite", store => store.put({
-        id: item.id,
-        kind: item.kind,
-        blob: item.blob,
-        createdAt: item.createdAt,
-        createdAtLabel: item.createdAtLabel,
-        size: item.size,
-        mimeType: item.mimeType,
-        width: item.width,
-        height: item.height,
-        durationMs: item.durationMs,
-        deviceLabel: item.deviceLabel
-      }));
+      await tx(db, GALLERY_STORE, "readwrite", store => {
+        store.put({
+          id: item.id,
+          kind: item.kind,
+          blob: item.blob,
+          createdAt: item.createdAt,
+          createdAtLabel: item.createdAtLabel,
+          size: item.size,
+          mimeType: item.mimeType,
+          width: item.width,
+          height: item.height,
+          durationMs: item.durationMs,
+          deviceLabel: item.deviceLabel
+        });
+      });
 
       setCacheInfo(`Yedeklendi • ${formatCompactTime(Date.now())}`);
     }
@@ -773,7 +963,10 @@
     }
 
     async function clearAllCache() {
-      await tx(db, GALLERY_STORE, "readwrite", store => store.clear());
+      await tx(db, GALLERY_STORE, "readwrite", store => {
+        store.clear();
+      });
+
       setCacheInfo(`Temizlendi • ${formatCompactTime(Date.now())}`);
     }
 
@@ -803,13 +996,34 @@
         }));
 
       renderGallery();
+      setCacheInfo(`Yüklendi • ${galleryItems.length} öğe`);
+    }
 
-      const latestImage = [...galleryItems].reverse().find(item => item.kind === "image");
-      if (latestImage) {
-        drawBlobOnCanvas(latestImage.blob);
+    function openPreviewModal(item) {
+      modalTitleEl.textContent = `${item.id} • ${item.createdAtLabel}`;
+      modalBodyEl.innerHTML = "";
+
+      if (item.kind === "image") {
+        const img = document.createElement("img");
+        img.src = item.objectUrl;
+        img.alt = item.id;
+        modalBodyEl.appendChild(img);
+      } else {
+        const video = document.createElement("video");
+        video.src = item.objectUrl;
+        video.controls = true;
+        video.autoplay = true;
+        modalBodyEl.appendChild(video);
       }
 
-      setCacheInfo(`Yüklendi • ${galleryItems.length} öğe`);
+      previewModalEl.classList.add("open");
+      previewModalEl.setAttribute("aria-hidden", "false");
+    }
+
+    function closePreviewModal() {
+      previewModalEl.classList.remove("open");
+      previewModalEl.setAttribute("aria-hidden", "true");
+      modalBodyEl.innerHTML = "";
     }
 
     function renderGallery() {
@@ -828,33 +1042,18 @@
 
       for (const item of items) {
         const card = document.createElement("div");
-        card.className = "item-card";
+        card.className = `item-card${item.selected ? " selected" : ""}`;
 
-        const toolbar = document.createElement("div");
-        toolbar.className = "item-toolbar";
-
-        const left = document.createElement("label");
-        left.className = "check-wrap";
-
-        const cb = document.createElement("input");
-        cb.type = "checkbox";
-        cb.checked = item.selected;
-        cb.addEventListener("change", () => {
-          item.selected = cb.checked;
-          updateUiState();
+        card.addEventListener("click", (event) => {
+          if (event.target.closest("button")) return;
+          item.selected = !item.selected;
+          renderGallery();
         });
 
-        const kind = document.createElement("span");
-        kind.textContent = item.kind === "image" ? "PNG" : "MP4";
-
-        left.append(cb, kind);
-
-        const time = document.createElement("span");
-        time.className = "muted";
-        time.style.fontSize = "12px";
-        time.textContent = formatCompactTime(item.createdAt);
-
-        toolbar.append(left, time);
+        card.addEventListener("dblclick", (event) => {
+          if (event.target.closest("button")) return;
+          openPreviewModal(item);
+        });
 
         const preview = document.createElement("div");
         preview.className = "item-preview";
@@ -867,39 +1066,43 @@
         } else {
           const vid = document.createElement("video");
           vid.src = item.objectUrl;
-          vid.controls = true;
           vid.muted = true;
           vid.preload = "metadata";
           preview.appendChild(vid);
         }
 
+        const badges = document.createElement("div");
+        badges.className = "item-top-badges";
+
+        const kindPill = document.createElement("span");
+        kindPill.className = "pill";
+        kindPill.textContent = item.kind === "image" ? "PNG" : "MP4";
+
+        const selectedPill = document.createElement("span");
+        selectedPill.className = "pill";
+        selectedPill.textContent = item.selected ? "Seçili" : bytesToLabel(item.size);
+
+        badges.append(kindPill, selectedPill);
+        preview.appendChild(badges);
+
         const body = document.createElement("div");
         body.className = "item-body";
 
-        const itemKind = document.createElement("div");
-        itemKind.className = "item-kind";
-        itemKind.textContent = item.kind === "image" ? "Image Capture" : "Video Capture";
-
         const itemName = document.createElement("div");
         itemName.className = "item-name";
-        itemName.textContent = `${item.id} • ${item.createdAtLabel}`;
+        itemName.textContent = item.id;
 
-        const meta = document.createElement("div");
-        meta.className = "item-meta";
-        meta.textContent = [
-          `Cihaz: ${item.deviceLabel || "-"}`,
-          item.width && item.height ? `Boyut: ${item.width}x${item.height}` : "",
-          item.kind === "video" ? `Süre: ${msToLabel(item.durationMs)}` : "",
-          `Dosya: ${bytesToLabel(item.size)}`,
-          `Tür: ${item.mimeType}`
-        ].filter(Boolean).join("\n");
+        const itemDate = document.createElement("div");
+        itemDate.className = "item-date";
+        itemDate.textContent = item.createdAtLabel;
 
         const actions = document.createElement("div");
         actions.className = "item-actions";
 
         const dl = document.createElement("button");
         dl.textContent = "İndir";
-        dl.addEventListener("click", () => {
+        dl.addEventListener("click", (event) => {
+          event.stopPropagation();
           const ext = item.kind === "image" ? "png" : "mp4";
           triggerDownload(item.objectUrl, `${item.id}.${ext}`);
         });
@@ -907,13 +1110,14 @@
         const del = document.createElement("button");
         del.className = "danger";
         del.textContent = "Sil";
-        del.addEventListener("click", async () => {
+        del.addEventListener("click", async (event) => {
+          event.stopPropagation();
           await deleteGalleryItemsByIds([item.id]);
         });
 
         actions.append(dl, del);
-        body.append(itemKind, itemName, meta, actions);
-        card.append(toolbar, preview, body);
+        body.append(itemName, itemDate, actions);
+        card.append(preview, body);
         galleryEl.appendChild(card);
       }
 
@@ -981,7 +1185,6 @@
 
       const previousIndex = inputs.findIndex(item => item.deviceId === previous);
       const preferredIndex = inputs.findIndex(item => /gopro|hero|usb/i.test(item.label || ""));
-
       deviceSelectEl.selectedIndex = previousIndex >= 0 ? previousIndex : preferredIndex >= 0 ? preferredIndex : 0;
 
       setMetaInfo({
@@ -1031,6 +1234,35 @@
       updateUiState();
     }
 
+    function stopAutoCountdownTimer() {
+      if (autoCountdownIntervalId !== null) {
+        clearInterval(autoCountdownIntervalId);
+        autoCountdownIntervalId = null;
+      }
+    }
+
+    function stopAutoCaptureTimers() {
+      if (autoCaptureTimeoutId !== null) {
+        clearTimeout(autoCaptureTimeoutId);
+        autoCaptureTimeoutId = null;
+      }
+      if (autoCaptureIntervalId !== null) {
+        clearInterval(autoCaptureIntervalId);
+        autoCaptureIntervalId = null;
+      }
+      stopAutoCountdownTimer();
+    }
+
+    function finishAutoCapture(message = "Oto capture durduruldu.") {
+      stopAutoCaptureTimers();
+      autoCaptureRunning = false;
+      autoCaptureStarted = false;
+      autoCaptureRemaining = 0;
+      autoInfoEl.textContent = "Oto capture kapalı";
+      updateUiState();
+      if (message) setStatus(message);
+    }
+
     function cleanupStream() {
       if (!currentStream) return;
       currentStream.getTracks().forEach(track => track.stop());
@@ -1042,6 +1274,7 @@
     }
 
     async function stopCurrentStream() {
+      finishAutoCapture("");
       await stopRecordingIfNeeded(true);
       cleanupStream();
       setMetaInfo({
@@ -1059,6 +1292,7 @@
         throw new Error("Önce bir kamera seç.");
       }
 
+      finishAutoCapture("");
       await stopRecordingIfNeeded(true);
       cleanupStream();
 
@@ -1104,7 +1338,7 @@
       await startSelectedCamera();
     }
 
-    async function captureFrame() {
+    async function createPngCapture(sourceLabel = "manual") {
       if (!currentStream) {
         throw new Error("Önce kamera açılmalı.");
       }
@@ -1116,21 +1350,23 @@
         throw new Error("Video hazır değil.");
       }
 
-      canvasEl.width = width;
-      canvasEl.height = height;
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
 
-      const ctx = canvasEl.getContext("2d");
+      const ctx = canvas.getContext("2d");
       if (!ctx) {
         throw new Error("Canvas context alınamadı.");
       }
 
       ctx.drawImage(videoEl, 0, 0, width, height);
 
-      const blob = await getCanvasBlob(canvasEl, "image/png");
+      const blob = await getCanvasBlob(canvas, "image/png");
       const createdAt = Date.now();
+      const prefix = sourceLabel === "auto" ? "auto_image" : "image";
 
       await addGalleryItem({
-        id: `image_${createTimeStampFilePart(createdAt)}`,
+        id: `${prefix}_${createTimeStampFilePart(createdAt)}`,
         kind: "image",
         blob,
         createdAt,
@@ -1143,7 +1379,95 @@
         deviceLabel: getSelectedDeviceLabel()
       });
 
-      setStatus(`PNG capture eklendi.\nBoyut: ${width}x${height}\nTarih: ${formatDateTimeLabel(createdAt)}`);
+      playShutterClick();
+      return { width, height, createdAt };
+    }
+
+    async function captureFrame() {
+      const result = await createPngCapture("manual");
+      setStatus(`PNG capture eklendi.\nBoyut: ${result.width}x${result.height}\nTarih: ${formatDateTimeLabel(result.createdAt)}`);
+    }
+
+    async function runAutoCaptureStep() {
+      if (!autoCaptureRunning || !currentStream) {
+        finishAutoCapture("");
+        return;
+      }
+
+      if (autoCaptureRemaining <= 0) {
+        finishAutoCapture("Oto capture tamamlandı.");
+        return;
+      }
+
+      const stepNo = autoCaptureTotal - autoCaptureRemaining + 1;
+      const result = await createPngCapture("auto");
+      autoCaptureRemaining -= 1;
+
+      if (autoCaptureRemaining > 0) {
+        autoInfoEl.textContent = `${stepNo}/${autoCaptureTotal} tamamlandı • Sonraki ${autoCaptureIntervalSeconds} sn sonra`;
+        updateUiState();
+      } else {
+        finishAutoCapture(`Oto capture tamamlandı.\nToplam ${autoCaptureTotal} foto eklendi.\nSon boyut: ${result.width}x${result.height}`);
+      }
+    }
+
+    function startAutoCaptureCountdown() {
+      autoCaptureRunning = true;
+      autoCaptureStarted = false;
+      autoCaptureRemaining = autoCaptureTotal;
+      autoCaptureDelaySeconds = Number(autoDelaySelectEl.value);
+      autoCaptureIntervalSeconds = Number(autoIntervalSelectEl.value);
+
+      let countdown = autoCaptureDelaySeconds;
+      autoInfoEl.textContent = `${countdown} sn sonra başlayacak • ${autoCaptureIntervalSeconds} sn aralık • ${autoCaptureTotal} foto`;
+      updateUiState();
+
+      playSimpleBeep();
+
+      autoCountdownIntervalId = window.setInterval(() => {
+        countdown -= 1;
+        if (countdown > 0) {
+          playSimpleBeep();
+          autoInfoEl.textContent = `${countdown} sn sonra başlayacak • ${autoCaptureIntervalSeconds} sn aralık • ${autoCaptureTotal} foto`;
+        }
+      }, 1000);
+
+      autoCaptureTimeoutId = window.setTimeout(async () => {
+        autoCaptureTimeoutId = null;
+        stopAutoCountdownTimer();
+
+        if (!autoCaptureRunning) return;
+
+        autoCaptureStarted = true;
+        autoInfoEl.textContent = `Başladı • 1/${autoCaptureTotal} çekiliyor...`;
+        updateUiState();
+
+        try {
+          await runAutoCaptureStep();
+
+          if (!autoCaptureRunning) return;
+          if (autoCaptureRemaining <= 0) return;
+
+          autoCaptureIntervalId = window.setInterval(async () => {
+            if (!autoCaptureRunning) return;
+            if (autoCaptureRemaining <= 0) {
+              finishAutoCapture("Oto capture tamamlandı.");
+              return;
+            }
+
+            playSimpleBeep();
+            try {
+              await runAutoCaptureStep();
+            } catch (error) {
+              handleError(error);
+              finishAutoCapture("Oto capture hata nedeniyle durdu.");
+            }
+          }, autoCaptureIntervalSeconds * 1000);
+        } catch (error) {
+          handleError(error);
+          finishAutoCapture("Oto capture hata nedeniyle durdu.");
+        }
+      }, autoCaptureDelaySeconds * 1000);
     }
 
     function getSelectedGalleryItems() {
@@ -1165,6 +1489,7 @@
         throw new Error("Kayıt zaten sürüyor.");
       }
 
+      finishAutoCapture("");
       recordedChunks = [];
       const recordingStartTime = Date.now();
 
@@ -1319,6 +1644,7 @@
 
     grantBtnEl.addEventListener("click", async () => {
       try {
+        ensureAudioContext();
         await initializeAndAutoStart();
       } catch (error) {
         handleError(error);
@@ -1348,10 +1674,26 @@
 
     captureBtnEl.addEventListener("click", async () => {
       try {
+        ensureAudioContext();
         await captureFrame();
       } catch (error) {
         handleError(error);
       }
+    });
+
+    autoStartBtnEl.addEventListener("click", () => {
+      try {
+        ensureAudioContext();
+        if (!currentStream) throw new Error("Önce stream açılmalı.");
+        if (autoCaptureRunning) throw new Error("Oto capture zaten çalışıyor.");
+        startAutoCaptureCountdown();
+      } catch (error) {
+        handleError(error);
+      }
+    });
+
+    autoStopBtnEl.addEventListener("click", () => {
+      finishAutoCapture("Oto capture durduruldu.");
     });
 
     recordBtnEl.addEventListener("click", async () => {
@@ -1437,6 +1779,20 @@
       }
     });
 
+    closeModalBtnEl.addEventListener("click", closePreviewModal);
+
+    previewModalEl.addEventListener("click", (event) => {
+      if (event.target === previewModalEl) {
+        closePreviewModal();
+      }
+    });
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && previewModalEl.classList.contains("open")) {
+        closePreviewModal();
+      }
+    });
+
     navigator.mediaDevices?.addEventListener?.("devicechange", async () => {
       if (!permissionGranted) return;
 
@@ -1457,6 +1813,7 @@
     });
 
     window.addEventListener("beforeunload", () => {
+      stopAutoCaptureTimers();
       stopRecordingTimer();
       cleanupStream();
       revokeGalleryObjectUrls();
@@ -1464,6 +1821,8 @@
 
     (async function init() {
       try {
+        buildInfoEl.textContent = `Son güncelleme: ${APP_UPDATED_AT}`;
+        autoCountInputEl.value = `${autoCaptureTotal} foto`;
         ensureBrowserSupport();
         selectedRecordingMimeType = pickSupportedMp4MimeType();
         setMetaInfo({
