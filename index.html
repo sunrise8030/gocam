@@ -629,7 +629,7 @@
         <h1 id="appTitle">PNG + MP4 galeri, cache, klasöre kaydetme</h1>
       </div>
       <div class="topbar-actions">
-        <div class="muted" id="buildInfo">v1.13 • Yazılım güncelleme: 02.04.2026 15:40:00</div>
+        <div class="muted" id="buildInfo">v1.14 • Yazılım güncelleme: 14.04.2026 00:00:00</div>
         <button id="langToggleBtn" class="lang-btn" title="Deutsch / Türkçe">
           <span class="btn-icon">🇩🇪</span>
           <span class="btn-label" id="langToggleLabel">DE</span>
@@ -804,8 +804,8 @@
   </div>
 
   <script>
-    const APP_VERSION = "1.13";
-    const APP_UPDATED_AT = "02.04.2026 15:40:00";
+    const APP_VERSION = "1.14";
+    const APP_UPDATED_AT = "14.04.2026 00:00:00";
 
     const translations = {
       tr: {
@@ -848,6 +848,7 @@
         buildInfo: `v${APP_VERSION} • Yazılım güncelleme: ${APP_UPDATED_AT}`,
         folderNotSelected: "Klasör seçilmedi",
         folderSelected: "Seçili klasör: {name}",
+        folderUnsupportedFallback: "Klasör API yok. Kaydet işlemi indirme olarak çalışacak.",
         ready: "Hazır. 'İzin Ver ve Başlat' ile devam et.",
         readyShort: "Hazır.",
         cacheReady: "Hazır",
@@ -883,6 +884,8 @@
         folderApiMissing: "Bu tarayıcı klasör yazmayı desteklemiyor. Chrome veya Edge dene.",
         folderChosen: "Klasör seçildi.\nKlasör: {name}",
         savedItems: "{count} öğe kaydedildi.\nKlasör: {folder}\nŞablon: {pattern}",
+        downloadFallbackUsed: "Klasöre yazma desteklenmedi. {count} öğe indirme olarak verildi.\nŞablon: {pattern}",
+        folderWriteFailedFallback: "Klasöre yazma başarısız oldu. İndirme fallback kullanıldı.",
         deletedItems: "{count} öğe silindi.",
         selectedAll: "Tüm öğeler seçildi.",
         selectionCleared: "Seçim temizlendi.",
@@ -946,6 +949,7 @@
         buildInfo: `v${APP_VERSION} • Software-Update: ${APP_UPDATED_AT}`,
         folderNotSelected: "Kein Ordner gewählt",
         folderSelected: "Gewählter Ordner: {name}",
+        folderUnsupportedFallback: "Keine Ordner-API. Speichern läuft als Download.",
         ready: "Bereit. Mit 'Zugriff erlauben und starten' fortfahren.",
         readyShort: "Bereit.",
         cacheReady: "Bereit",
@@ -981,6 +985,8 @@
         folderApiMissing: "Ordnerzugriff wird in diesem Browser nicht unterstützt. Chrome oder Edge verwenden.",
         folderChosen: "Ordner gewählt.\nOrdner: {name}",
         savedItems: "{count} Elemente gespeichert.\nOrdner: {folder}\nSchema: {pattern}",
+        downloadFallbackUsed: "Ordnerspeichern nicht verfügbar. {count} Elemente wurden als Download ausgegeben.\nSchema: {pattern}",
+        folderWriteFailedFallback: "Ordnerschreiben fehlgeschlagen. Download-Fallback wurde verwendet.",
         deletedItems: "{count} Elemente gelöscht.",
         selectedAll: "Alle Elemente wurden ausgewählt.",
         selectionCleared: "Auswahl aufgehoben.",
@@ -1366,9 +1372,13 @@
     }
 
     function updateFolderUi() {
-      folderInfoEl.textContent = folderHandle
-        ? t("folderSelected", { name: folderName })
-        : t("folderNotSelected");
+      if (folderHandle) {
+        folderInfoEl.textContent = t("folderSelected", { name: folderName });
+      } else if (supportsDirectoryWriting()) {
+        folderInfoEl.textContent = t("folderNotSelected");
+      } else {
+        folderInfoEl.textContent = t("folderUnsupportedFallback");
+      }
 
       saveSelectedIconEl.textContent = "💾";
       saveSelectedLabelEl.textContent = t("saveSelectedLabel");
@@ -1424,7 +1434,7 @@
       clearSelectionBtnEl.disabled = selectedCount === 0;
       deleteSelectedBtnEl.disabled = selectedCount === 0;
       clearCacheBtnEl.disabled = !hasItems;
-      saveSelectedBtnEl.disabled = !supportsDirectoryWriting() || selectedCount === 0;
+      saveSelectedBtnEl.disabled = selectedCount === 0;
 
       updateFolderUi();
       updateGalleryStats();
@@ -1510,7 +1520,7 @@
     }
 
     async function restoreFolderHandleFromSettings() {
-      if (!settingsDb) return;
+      if (!settingsDb || !supportsDirectoryWriting()) return;
 
       return new Promise((resolve, reject) => {
         const tr = settingsDb.transaction(SETTINGS_STORE, "readonly");
@@ -1702,7 +1712,7 @@
       renderGallery();
 
       try {
-        await saveSelectedToFolder();
+        await saveSelectedToBestTarget();
       } finally {
         galleryItems.forEach((entry, index) => {
           entry.selected = previousSelections[index];
@@ -2401,13 +2411,36 @@
       await deleteGalleryItemsByIds([uid]);
     }
 
-    async function saveSelectedToFolder() {
-      const items = getSelectedGalleryItems();
-      if (!items.length) throw new Error(t("selectedFirst"));
+    async function saveBlobAsDownload(blob, fileName) {
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
 
+    async function saveItemsAsDownloads(items, baseName) {
+      for (let index = 0; index < items.length; index += 1) {
+        const item = items[index];
+        const no = pad2(index + 1);
+        const ext = item.kind === "image" ? "png" : "mp4";
+        const datePart = createTimeStampFilePart(item.createdAt);
+        const fileName = `${baseName}_${no}_${datePart}.${ext}`;
+        await saveBlobAsDownload(item.blob, fileName);
+        await sleep(120);
+      }
+
+      setStatus(t("downloadFallbackUsed", {
+        count: items.length,
+        pattern: `${baseName}_01_YYYYMMDD_HHMMSS`
+      }));
+    }
+
+    async function saveItemsToFolder(items, baseName) {
       await ensureWritableFolderHandle();
-
-      const baseName = sanitizeBaseName(baseNameInputEl.value);
 
       for (let index = 0; index < items.length; index += 1) {
         const item = items[index];
@@ -2428,6 +2461,25 @@
         folder: folderName,
         pattern: `${baseName}_01_YYYYMMDD_HHMMSS`
       }));
+    }
+
+    async function saveSelectedToBestTarget() {
+      const items = getSelectedGalleryItems();
+      if (!items.length) throw new Error(t("selectedFirst"));
+
+      const baseName = sanitizeBaseName(baseNameInputEl.value);
+
+      if (supportsDirectoryWriting()) {
+        try {
+          await saveItemsToFolder(items, baseName);
+          return;
+        } catch (error) {
+          console.warn("Folder save failed, using download fallback.", error);
+          setStatus(t("folderWriteFailedFallback"));
+        }
+      }
+
+      await saveItemsAsDownloads(items, baseName);
     }
 
     function handleError(error) {
@@ -2565,7 +2617,7 @@
 
     saveSelectedBtnEl.addEventListener("click", async () => {
       try {
-        await saveSelectedToFolder();
+        await saveSelectedToBestTarget();
       } catch (error) {
         handleError(error);
       }
