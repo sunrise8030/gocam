@@ -276,11 +276,9 @@
 
       grid-template-columns:
 
+        minmax(190px, 240px)
+
         minmax(170px, 220px)
-
-        minmax(150px, 190px)
-
-        minmax(170px, 200px)
 
         minmax(170px, 220px);
 
@@ -1090,7 +1088,7 @@
 
       <div class="topbar-actions">
 
-        <div class="muted" id="buildInfo">v1.15 • Yazılım güncelleme: 22.04.2026 10:45:00</div>
+        <div class="muted" id="buildInfo">v1.16 • Yazılım güncelleme: 22.04.2026 11:10:00</div>
 
         <button id="langToggleBtn" class="lang-btn" title="Deutsch / Türkçe">
 
@@ -1292,14 +1290,6 @@
 
               </label>
 
-              <label class="field">
-
-                <span id="baseNameLabel">Dosya Adı</span>
-
-                <input id="baseNameInput" type="text" value="capture" placeholder="Dosya adı" />
-
-              </label>
-
               <button id="pickFolderBtn" class="success">
 
                 <span class="btn-icon">📁</span>
@@ -1398,9 +1388,9 @@
 
   <script>
 
-    const APP_VERSION = "1.15";
+    const APP_VERSION = "1.16";
 
-    const APP_UPDATED_AT = "22.04.2026 10:45:00";
+    const APP_UPDATED_AT = "22.04.2026 11:10:00";
 
     const FIXED_LOGO_URL = "./Aplus_logo.png";
 
@@ -1468,10 +1458,6 @@
 
         patientNamePlaceholder: "Hasta adı",
 
-        baseNameLabel: "Dosya Adı",
-
-        baseNamePlaceholder: "Dosya adı",
-
         pickFolderBtnLabel: "Klasör Seç",
 
         saveSelectedLabel: "Seçilenleri Kaydet",
@@ -1493,8 +1479,6 @@
         folderSelected: "Seçili klasör: {name}",
 
         ready: "Hazır. 'İzin Ver ve Başlat' ile devam et.",
-
-        readyShort: "Hazır.",
 
         cacheReady: "Hazır",
 
@@ -1670,10 +1654,6 @@
 
         patientNamePlaceholder: "Patientenname",
 
-        baseNameLabel: "Dateiname",
-
-        baseNamePlaceholder: "Dateiname",
-
         pickFolderBtnLabel: "Ordner wählen",
 
         saveSelectedLabel: "Auswahl speichern",
@@ -1695,8 +1675,6 @@
         folderSelected: "Gewählter Ordner: {name}",
 
         ready: "Bereit. Mit 'Zugriff erlauben und starten' fortfahren.",
-
-        readyShort: "Bereit.",
 
         cacheReady: "Bereit",
 
@@ -1847,8 +1825,6 @@
     const saveSelectedIconEl = document.getElementById("saveSelectedIcon");
 
     const saveSelectedLabelEl = document.getElementById("saveSelectedLabel");
-
-    const baseNameInputEl = document.getElementById("baseNameInput");
 
     const statusEl = document.getElementById("status");
 
@@ -2048,8 +2024,6 @@
 
       document.getElementById("patientNameLabel").textContent = t("patientNameLabel");
 
-      document.getElementById("baseNameLabel").textContent = t("baseNameLabel");
-
       document.getElementById("pickFolderBtnLabel").textContent = t("pickFolderBtnLabel");
 
       document.getElementById("selectAllBtnLabel").textContent = t("selectAllBtnLabel");
@@ -2065,8 +2039,6 @@
       buildInfoEl.textContent = t("buildInfo");
 
       patientNameInputEl.placeholder = t("patientNamePlaceholder");
-
-      baseNameInputEl.placeholder = t("baseNamePlaceholder");
 
       langToggleFlagEl.textContent = currentLang === "tr" ? "🇩🇪" : "🇹🇷";
 
@@ -2321,12 +2293,6 @@
       ctx.putImageData(imageData, 0, 0);
 
       return canvas;
-
-    }
-
-    function getOverlayFileNo() {
-
-      return String(galleryItems.length + 1).padStart(3, "0");
 
     }
 
@@ -4398,7 +4364,7 @@
 
       await ensureWritableFolderHandle();
 
-      const baseName = sanitizeBaseName(baseNameInputEl.value);
+      const baseName = sanitizeBaseName(patientNameInputEl.value || "capture");
 
       for (let index = 0; index < items.length; index += 1) {
 
